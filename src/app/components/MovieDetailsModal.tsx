@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 
 type MovieDetailsModalProps = {
   movie: {
@@ -47,11 +48,15 @@ const MovieDetailsModal: React.FC<MovieDetailsModalProps> = ({ movie, onClose })
       <div className="flex flex-col md:flex-row gap-6 p-6">
         <div className="flex-shrink-0">
           {movie.Poster && movie.Poster !== "N/A" ? (
-            <img
-              src={movie.Poster}
-              alt={movie.Title}
-              className="w-64 h-96 object-cover rounded-lg shadow-lg mx-auto md:mx-0"
-            />
+            <div className="relative w-64 h-96 mx-auto md:mx-0">
+              <Image
+                src={movie.Poster}
+                alt={movie.Title}
+                fill
+                className="object-cover rounded-lg shadow-lg"
+                sizes="256px"
+              />
+            </div>
           ) : (
             <div className="w-64 h-96 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
               <div className="text-6xl opacity-50">🎬</div>
