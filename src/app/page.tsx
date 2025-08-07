@@ -197,10 +197,24 @@ export default function Home() {
     }
   }, [page, searchMovies]);
 
+
   const handleSearch = () => { 
+    const trimmed = search.trim();
     setPage(1); 
+
+    if (trimmed === "") {
+      setMovies([]);
+      setHasSearched(false);
+      return;
+    }
     searchMovies(); 
   };
+
+  const clearSearch = () => {
+  setSearch("");
+  setMovies([]);
+  setHasSearched(false);
+};
   
   const handlePage = (p: number) => setPage(p);
 
@@ -227,7 +241,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col">
       <main className="max-w-3xl mx-auto p-4 flex-grow">
         <h1 className="text-3xl font-bold mb-3">Movie & Series Explorer</h1>
-        <SearchBar value={search} onChange={setSearch} onSearch={handleSearch} />
+        <SearchBar value={search} onChange={setSearch} onSearch={handleSearch} onClear={clearSearch}  />
         <Filters type={type} year={year} setType={setType} setYear={setYear} />
         
         {/* Loading State */}
