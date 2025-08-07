@@ -16,16 +16,19 @@ console.log("API_KEY variable:", API_KEY);
 console.log("All NEXT_PUBLIC env vars:", Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC')));
 
 // Type definitions
-interface Movie {
+interface MovieSearchResult {
   imdbID: string;
   Title: string;
   Year: string;
-  Type: string;
+  Type: "movie" | "series" | "episode";
   Poster: string;
 }
 
+// Alias for backward compatibility
+type Movie = MovieSearchResult;
+
 interface SearchResponse {
-  Search?: Movie[];
+  Search?: MovieSearchResult[];
   totalResults?: string;
   Response: string;
   Error?: string;
@@ -150,7 +153,7 @@ export default function Home() {
   const [type, setType] = useState("");
   const [year, setYear] = useState("");
   const [page, setPage] = useState(1);
-  const [movies, setMovies] = useState<Movie[]>([]);
+  const [movies, setMovies] = useState<MovieSearchResult[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -201,7 +204,7 @@ export default function Home() {
   
   const handlePage = (p: number) => setPage(p);
 
-  const openDetails = async (movie: Movie) => {
+  const openDetails = async (movie: MovieSearchResult) => {
     if (!API_KEY) {
       return;
     }
