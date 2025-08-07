@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import SearchBar from "./components/SearchBar";
 import Filters from "./components/Filters";
 import MovieCard from "./components/MovieCard";
@@ -15,15 +15,64 @@ console.log("NEXT_PUBLIC_OMDB_API_KEY:", process.env.NEXT_PUBLIC_OMDB_API_KEY);
 console.log("API_KEY variable:", API_KEY);
 console.log("All NEXT_PUBLIC env vars:", Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC')));
 
-const fetchMovies = async (query: {s: string, type?: string, y?: string, page?: number}) => {
+// Type definitions
+interface Movie {
+  imdbID: string;
+  Title: string;
+  Year: string;
+  Type: string;
+  Poster: string;
+}
+
+interface SearchResponse {
+  Search?: Movie[];
+  totalResults?: string;
+  Response: string;
+  Error?: string;
+}
+
+interface MovieDetails {
+  Title: string;
+  Year: string;
+  Rated: string;
+  Released: string;
+  Runtime: string;
+  Genre: string;
+  Director: string;
+  Writer: string;
+  Actors: string;
+  Plot: string;
+  Language: string;
+  Country: string;
+  Awards: string;
+  Poster: string;
+  Ratings: Array<{ Source: string; Value: string }>;
+  Metascore: string;
+  imdbRating: string;
+  imdbVotes: string;
+  imdbID: string;
+  Type: string;
+  DVD: string;
+  BoxOffice: string;
+  Production: string;
+  Website: string;
+  Response: string;
+}
+
+interface FetchMoviesQuery {
+  s: string;
+  type?: string;
+  y?: string;
+  page?: number;
+}
+
+const fetchMovies = async (query: FetchMoviesQuery): Promise<SearchResponse> => {
   if (!API_KEY) {
     throw new Error("OMDB API key is not configured. Please check your environment variables.");
   }
   
   const {s, type, y, page} = query;
-  let url = `https://www.omdbapi.com/?apikey=${API_KEY}&s=${encodeURIComponent(s)}&page=${page ?? 1}`;
-  if (type) url += `&type=${type}`;
-  if (y) url += `&y=${y}`;
+  const url = `https://www.omdbapi.com/?apikey=${API_KEY}&s=${encodeURIComponent(s)}&page=${page ?? 1}${type ? `&type=${type}` : ''}${y ? `&y=${y}` : ''}`;
   
   const res = await fetch(url);
   
@@ -34,12 +83,12 @@ const fetchMovies = async (query: {s: string, type?: string, y?: string, page?: 
   return res.json();
 };
 
-const fetchMovieDetails = async (imdbID: string) => {
+const fetchMovieDetails = async (imdbID: string): Promise<MovieDetails> => {
   if (!API_KEY) {
     throw new Error("OMDB API key is not configured. Please check your environment variables.");
   }
   
-  let url = `https://www.omdbapi.com/?apikey=${API_KEY}&i=${imdbID}&plot=full`;
+  const url = `https://www.omdbapi.com/?apikey=${API_KEY}&i=${imdbID}&plot=full`;
   const res = await fetch(url);
   
   if (!res.ok) {
@@ -67,7 +116,7 @@ const EmptyState = ({ hasSearched }: { hasSearched: boolean }) => (
           No movies found
         </h3>
         <p className="text-gray-500 dark:text-gray-400 max-w-md">
-          Try adjusting your search terms or filters to find what you're looking for.
+          Try adjusting your search terms or filters to find what you&apos;re looking for.
         </p>
       </>
     ) : (
@@ -80,23 +129,6 @@ const EmptyState = ({ hasSearched }: { hasSearched: boolean }) => (
         </p>
       </>
     )}
-  </div>
-);
-
-// Enhanced Error Component
-const ErrorMessage = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
-  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
-    <div className="text-4xl mb-3">⚠️</div>
-    <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">
-      Something went wrong
-    </h3>
-    <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-    <button 
-      onClick={onRetry}
-      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-    >
-      Try Again
-    </button>
   </div>
 );
 
@@ -118,27 +150,20 @@ export default function Home() {
   const [type, setType] = useState("");
   const [year, setYear] = useState("");
   const [page, setPage] = useState(1);
-  const [movies, setMovies] = useState<any[]>([]);
+  const [movies, setMovies] = useState<Movie[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [selected, setSelected] = useState<any>(null);
-  const [modalData, setModalData] = useState<any>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [modalData, setModalData] = useState<MovieDetails | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
-  // Check if API key is available on component mount
-  useEffect(() => {
-    // Remove API key error checking - just silently handle missing key
-  }, []);
-
-  const searchMovies = async () => {
+  const searchMovies = useCallback(async () => {
     if (!search.trim()) return;
     if (!API_KEY) {
       return;
     }
     
-    setError(""); 
     setLoading(true);
     setHasSearched(true);
     
@@ -152,9 +177,8 @@ export default function Home() {
           // Only show other types of errors if needed, but for now just return
         }
       } else {
-        setMovies(data.Search);
-        setTotalPages(Math.ceil(+data.totalResults / 10));
-        setError(""); // Clear any previous errors on successful search
+        setMovies(data.Search || []);
+        setTotalPages(Math.ceil(+(data.totalResults || 0) / 10));
       }
     } catch (err) {
       console.error("Search error:", err);
@@ -162,11 +186,13 @@ export default function Home() {
       setMovies([]);
     }
     setLoading(false);
-  };
+  }, [search, type, year, page]);
 
   useEffect(() => { 
-    if (search.trim() && API_KEY) searchMovies(); 
-  }, [page]);
+    if (search.trim() && API_KEY) {
+      searchMovies(); 
+    }
+  }, [page, searchMovies]);
 
   const handleSearch = () => { 
     setPage(1); 
@@ -175,7 +201,7 @@ export default function Home() {
   
   const handlePage = (p: number) => setPage(p);
 
-  const openDetails = async (movie: any) => {
+  const openDetails = async (movie: Movie) => {
     if (!API_KEY) {
       return;
     }
@@ -192,13 +218,6 @@ export default function Home() {
       setSelected(null);
     }
     setDetailsLoading(false);
-  };
-
-  const handleRetry = () => {
-    setError("");
-    if (search.trim()) {
-      searchMovies();
-    }
   };
 
   return (
